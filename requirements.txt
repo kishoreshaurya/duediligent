@@ -4,5 +4,5 @@ pandas
 pydeck
 streamlit
 openai
-llama-index
+llama_index
 nltk
