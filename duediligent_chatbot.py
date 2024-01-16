@@ -1,71 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[9]:
-
-
-import openai
-import requests
-import datetime
-api_key = "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"  # Replace with your actual OpenAI API key
-
-# API headers
-headers = {'Authorization': f'Bearer {api_key}'}
-
-# API endpoint
-url = 'https://api.openai.com/v1/usage'
-
-# Date for which to get usage data
-date = datetime.date(2024, 1, 16)
-
-# Parameters for API request
-params = {'date': date.strftime('%Y-%m-%d')}
-
-# Send API request and get response
-response = requests.get(url, headers=headers, params=params)
-usage_data = response.json()['data']
-
-# Calculate total number of tokens used for each model
-total_tokens_used_davinci = 0
-total_tokens_used_ada = 0
-
-for data in usage_data:
-    model_name = data['model']
-    n_generated_tokens_total = data['n_generated_tokens_total']
-    n_context_tokens_total = data['n_context_tokens_total']
-    total_tokens = n_generated_tokens_total + n_context_tokens_total
-    if model_name == 'text-davinci-003':
-        total_tokens_used_davinci += total_tokens
-    elif model_name == 'text-embedding-ada-002':
-        total_tokens_used_ada += total_tokens
-
-# Estimate cost for each model based on token usage
-davinci_cost_per_token = 0.002 / 1000
-ada_cost_per_token = 0.0004 / 1000
-
-total_cost_davinci = total_tokens_used_davinci * davinci_cost_per_token
-total_cost_ada = total_tokens_used_ada * ada_cost_per_token
-
-# Print estimated costs
-print(f"Total number of tokens used by text-davinci-003 on {date}: {total_tokens_used_davinci}")
-print(f"Estimated cost for text-davinci-003 on {date}: ${total_cost_davinci:.2f}")
-
-print(f"\nTotal number of tokens used by text-embedding-ada-002 on {date}: {total_tokens_used_ada}")
-print(f"Estimated cost for text-embedding-ada-002 on {date}: ${total_cost_ada:.2f}")
-
-
-# In[6]:
-
-
-
 import streamlit as st
 from llama_index import VectorStoreIndex, ServiceContext, Document
 from llama_index.llms import OpenAI
 import openai
 from llama_index import SimpleDirectoryReader
-
-
-# In[10]:
 
 
 openai.api_key = "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"  # Replace with your actual OpenAI API key
@@ -106,10 +46,6 @@ if st.session_state.messages[-1]["role"] != "assistant":
             message = {"role": "assistant", "content": response.response}
             st.session_state.messages.append(message)
             
-
-
-# In[ ]:
-
 
 
 
