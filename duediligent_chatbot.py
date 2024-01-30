@@ -8,7 +8,7 @@ import openai
 from llama_index import SimpleDirectoryReader
 
 
-openai.api_key = "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"  # Replace with your actual OpenAI API key
+openai.api_key = ""  # Replace with your actual OpenAI API key
 # Initialize message history
 st.header("Chat with DueDiligent AI 💬 📊")
 
