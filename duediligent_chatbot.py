@@ -1,26 +1,40 @@
 #!/usr/bin/env python
 # coding: utf-8
-
 import streamlit as st
+import openai
+import plotly.express as px
 from llama_index import VectorStoreIndex, ServiceContext, Document
 from llama_index.llms import OpenAI
-import openai
 from llama_index import SimpleDirectoryReader
 
+# Set your OpenAI API key
+openai.api_key = ""
 
-openai.api_key = ""  # Replace with your actual OpenAI API key
-# Initialize message history
+# Initialize message history as a global list
+message_history = []
+
+# Initialize Streamlit app
 st.header("Chat with DueDiligent AI 💬 📊")
 
-if "messages" not in st.session_state.keys():
-    st.session_state.messages = [{"role": "assistant", "content": "Ask me a question about DueDiligent's AI for due diligence process!"}]
+# Define a function to generate a plot based on knowledge from OpenAI
+def generate_plot_from_openai_knowledge(response):
+    # Extract relevant information from OpenAI response
+    # Modify this part based on your actual response structure
+    knowledge = response.choices[0].text
 
+    # Generate a plot based on the extracted knowledge
+    # Here's an example using Plotly Express:
+    df = px.data.gapminder()
+    fig = px.scatter(df, x="year", y="gdpPercap", color="continent", title=f"Plot based on OpenAI Knowledge:\n{knowledge}")
+    return fig
+
+# Initialize the chat engine as in your original code
 @st.cache_resource(show_spinner=False)
 def load_data():
     with st.spinner(text="Loading and indexing DueDiligent AI data – please wait."):
-        reader = SimpleDirectoryReader(input_dir="C:\\Users\\shaur\\OneDrive\\Desktop\\Dueligent\\", recursive=True)  # Adjust the data directory accordingly
+        reader = SimpleDirectoryReader(input_dir="C:\\Users\\shaur\\OneDrive\\Desktop\\Dueligent\\", recursive=True)
         docs = reader.load_data()
-        service_context = ServiceContext.from_defaults(llm=OpenAI(model="gpt-3.5-turbo", temperature=0.5, system_prompt="You are an expert in due diligence processes, specializing in legal, financial, technical, and market analysis. Your role is to provide insightful and accurate information related to due diligence inquiries. Please answer questions based on your expertise in these areas.  do not hallucinate features."))
+        service_context = ServiceContext.from_defaults(llm=OpenAI(model="gpt-3.5-turbo", temperature=0.5, system_prompt="You are an expert in due diligence processes, specializing in legal, financial, technical, and market analysis. Your role is to provide insightful and accurate information related to due diligence inquiries. Please answer questions based on your expertise in these areas.  do not hallucinate features"))
         index = VectorStoreIndex.from_documents(docs, service_context=service_context)
         return index
 
@@ -29,23 +43,51 @@ duediligent_index = load_data()
 chat_engine = duediligent_index.as_chat_engine(chat_mode="condense_question", verbose=True)
 
 # Prompt for user input and display message history
-if prompt := st.chat_input("Your question"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+user_input = st.text_input("You: ")
+if st.button("Ask"):
+    if user_input:
+        # User message
+        message_history.append({"role": "user", "content": user_input})
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+        # Check if the user is requesting a plot
+        if "plot" in user_input.lower():
+            # Generate a plot based on OpenAI knowledge
+            with st.spinner("Thinking..."):
+                try:
+                    response = openai.Completion.create(
+                        engine="text-davinci-003",
+                        prompt=user_input,
+                        max_tokens=150
+                    )
 
-# Pass query to chat engine and display response
-if st.session_state.messages[-1]["role"] != "assistant":
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            # Use LlamaIndex's chat engine to generate a response
-            response = chat_engine.chat(prompt)
-            st.write(response.response)
-            message = {"role": "assistant", "content": response.response}
-            st.session_state.messages.append(message)
-            
+                    response_text = response.choices[0].text.strip()
+                    message_history.append({"role": "assistant", "content": response_text})
 
+                    # Generate a plot based on OpenAI knowledge
+                    plot = generate_plot_from_openai_knowledge(response)
+                    st.plotly_chart(plot)
 
+                except Exception as e:
+                    st.error(f"Error generating response: {str(e)}")
+        else:
+            # Append the user's message to the message history
+            message_history.append({"role": "user", "content": user_input})
 
+# Check if the last role is not assistant to trigger a response
+if message_history and message_history[-1]["role"] != "assistant":
+    with st.spinner("Thinking..."):
+        try:
+            # Use OpenAI GPT-3.5 turbo to generate a response
+            response = chat_engine.chat(user_input)  # Use chat_engine instead of openai.Completion
+            response_text = response.response
+            st.text(f"Bot: {response_text}")
+            message_history.append({"role": "assistant", "content": response_text})
+        except Exception as e:
+            st.error(f"Error generating response: {str(e)}")
+
+# Display message history
+for message in message_history:
+    if message["role"] == "user":
+        st.text(f"You: {message['content']}")
+    elif message["role"] == "assistant":
+        st.text(f"DueDiligent AI: {message['content']}")
